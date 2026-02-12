@@ -1,0 +1,12 @@
+.DS_Store
+Thumbs.db
+
+# Build output
+bin/
+dist/
+/unrarall
+
+# Go artifacts
+*.test
+*.out
+coverage.out
