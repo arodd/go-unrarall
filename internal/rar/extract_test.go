@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -19,6 +20,7 @@ type fakeArchiveEntry struct {
 
 type fakeArchiveReader struct {
 	entries []fakeArchiveEntry
+	volumes []string
 	index   int
 	current *bytes.Reader
 }
@@ -41,6 +43,14 @@ func (r *fakeArchiveReader) Read(p []byte) (int, error) {
 		return 0, io.EOF
 	}
 	return r.current.Read(p)
+}
+
+func (r *fakeArchiveReader) Close() error { return nil }
+
+func (r *fakeArchiveReader) Volumes() []string {
+	out := make([]string, len(r.volumes))
+	copy(out, r.volumes)
+	return out
 }
 
 func TestExtractFromArchiveReaderFullPath(t *testing.T) {
@@ -145,5 +155,79 @@ func TestExtractFromArchiveReaderRejectsSymlinkEntries(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "symlink") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestExtractToDirMultiVolumeSets(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		archive    string
+		volumes    []string
+		extractRel string
+	}{
+		{
+			name:       "rar and r00 set",
+			archive:    filepath.Join("fixtures", "release.rar"),
+			volumes:    []string{filepath.Join("fixtures", "release.rar"), filepath.Join("fixtures", "release.r00")},
+			extractRel: filepath.Join("payload", "clip.mkv"),
+		},
+		{
+			name:       "part set",
+			archive:    filepath.Join("fixtures", "release.part01.rar"),
+			volumes:    []string{filepath.Join("fixtures", "release.part01.rar"), filepath.Join("fixtures", "release.part02.rar")},
+			extractRel: filepath.Join("proof", "shot.jpg"),
+		},
+		{
+			name:       "numeric set",
+			archive:    filepath.Join("fixtures", "release.001"),
+			volumes:    []string{filepath.Join("fixtures", "release.001"), filepath.Join("fixtures", "release.002")},
+			extractRel: "sample.txt",
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			reader := &fakeArchiveReader{
+				entries: []fakeArchiveEntry{
+					{
+						header: rardecode.FileHeader{Name: filepath.ToSlash(tc.extractRel)},
+						data:   []byte("payload"),
+					},
+				},
+				volumes: tc.volumes,
+			}
+
+			openedArchive := ""
+			opener := func(path string, opts ...rardecode.Option) (archiveReadCloser, error) {
+				openedArchive = path
+				return reader, nil
+			}
+
+			volumes, err := extractToDirWithOpener(opener, tc.archive, root, true)
+			if err != nil {
+				t.Fatalf("extractToDirWithOpener returned error: %v", err)
+			}
+			if openedArchive != tc.archive {
+				t.Fatalf("opened archive path=%q, want %q", openedArchive, tc.archive)
+			}
+			if !reflect.DeepEqual(volumes, tc.volumes) {
+				t.Fatalf("volumes=%v, want %v", volumes, tc.volumes)
+			}
+
+			target := filepath.Join(root, tc.extractRel)
+			data, err := os.ReadFile(target)
+			if err != nil {
+				t.Fatalf("read extracted file %q: %v", target, err)
+			}
+			if got := string(data); got != "payload" {
+				t.Fatalf("extracted data=%q, want %q", got, "payload")
+			}
+		})
 	}
 }

@@ -1,3 +1,5 @@
+- 2026-02-12 [feature] Added encrypted archive password retry support using `--password-file` with typed missing-password error handling.
+- 2026-02-12 [feature] Added multi-volume extraction coverage for `.rar/.r00`, `.part01.rar/.part02.rar`, and `.001/.002` first-volume workflows.
 - 2026-02-12 [feature] Added safe move handling with no-clobber destination suffixing and cross-device rename fallback copy support.
 - 2026-02-12 [feature] Added streaming RAR extraction primitives with full-path/flatten modes and traversal-safe archive path sanitization.
 - 2026-02-12 [feature] Added archive listing and skip-if-exists planning logic based on RAR entry names for full-path and flatten modes.

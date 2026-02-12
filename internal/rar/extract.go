@@ -24,7 +24,23 @@ type archiveReader interface {
 // flattened extraction modes and returns the volume paths consumed by the
 // archive reader.
 func ExtractToDir(archivePath, tmpDir string, fullPath bool, opts ...rardecode.Option) ([]string, error) {
-	reader, err := rardecode.OpenReader(archivePath, opts...)
+	return extractToDirWithOpener(openArchiveReader, archivePath, tmpDir, fullPath, opts...)
+}
+
+// ExtractToDirWithSettings is a convenience wrapper around ExtractToDir that
+// converts OpenSettings into decoder options.
+func ExtractToDirWithSettings(archivePath, tmpDir string, fullPath bool, settings OpenSettings) ([]string, error) {
+	return ExtractToDir(archivePath, tmpDir, fullPath, settings.DecodeOptions()...)
+}
+
+func extractToDirWithOpener(
+	opener openReaderFunc,
+	archivePath string,
+	tmpDir string,
+	fullPath bool,
+	opts ...rardecode.Option,
+) ([]string, error) {
+	reader, err := opener(archivePath, opts...)
 	if err != nil {
 		return nil, err
 	}
