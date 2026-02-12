@@ -3,24 +3,9 @@ package cli
 import (
 	"fmt"
 	"strings"
+
+	"github.com/austin/go-unrarall/internal/hooks"
 )
-
-type hookDoc struct {
-	Name string
-	Help string
-}
-
-var hookDocs = []hookDoc{
-	{Name: "nfo", Help: "Remove <stem>.nfo from the extraction root."},
-	{Name: "rar", Help: "Remove RAR volumes and matching SFV files next to the archive."},
-	{Name: "osx_junk", Help: "Remove .DS_Store from the extraction root."},
-	{Name: "windows_junk", Help: "Remove Thumbs.db from the extraction root."},
-	{Name: "covers_folders", Help: "Remove directories named covers recursively from the extraction root."},
-	{Name: "proof_folders", Help: "Remove directories named proof recursively from the extraction root."},
-	{Name: "sample_folders", Help: "Remove directories named sample recursively from the extraction root."},
-	{Name: "sample_videos", Help: "Remove root sample video files related to the archive stem."},
-	{Name: "empty_folders", Help: "Remove empty directories recursively from the archive directory."},
-}
 
 // Usage renders command usage text.
 func Usage(program string) string {
@@ -49,7 +34,7 @@ func Usage(program string) string {
 	b.WriteString("\n")
 
 	b.WriteString("Clean Hooks:\n")
-	for _, hook := range hookDocs {
+	for _, hook := range hooks.Docs() {
 		fmt.Fprintf(&b, "  %s: %s\n", hook.Name, hook.Help)
 	}
 	b.WriteString("  all: Run all hooks in default order.\n")

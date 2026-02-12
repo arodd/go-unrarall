@@ -1,3 +1,6 @@
+- 2026-02-12 [feature] Added full app orchestration with SFV checks, skip-if-exists gating, temp extraction moves, run stats, and script-parity exit-code handling.
+- 2026-02-12 [feature] Added recursive nested extraction support to `--depth` with nested-run failure propagation.
+- 2026-02-12 [feature] Added executable cleanup hook registry/engine for `--clean` hooks (`nfo`, `rar`, junk file cleanup, folder cleanup, sample video cleanup, and empty folder pruning).
 - 2026-02-12 [feature] Added encrypted archive password retry support using `--password-file` with typed missing-password error handling.
 - 2026-02-12 [feature] Added multi-volume extraction coverage for `.rar/.r00`, `.part01.rar/.part02.rar`, and `.001/.002` first-volume workflows.
 - 2026-02-12 [feature] Added safe move handling with no-clobber destination suffixing and cross-device rename fallback copy support.

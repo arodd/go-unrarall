@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/austin/go-unrarall/internal/hooks"
 )
 
 // Options contains parsed command-line options.
@@ -31,18 +33,6 @@ type Options struct {
 
 	ShowHelp    bool
 	ShowVersion bool
-}
-
-var availableHooks = []string{
-	"nfo",
-	"rar",
-	"osx_junk",
-	"windows_junk",
-	"covers_folders",
-	"proof_folders",
-	"sample_folders",
-	"sample_videos",
-	"empty_folders",
 }
 
 // ParseArgs parses and validates command-line arguments.
@@ -198,10 +188,7 @@ func parseCleanHooks(spec string) ([]string, error) {
 }
 
 func isKnownHook(name string) bool {
-	if name == "none" || name == "all" {
-		return true
-	}
-	return slices.Contains(availableHooks, name)
+	return hooks.IsKnown(name)
 }
 
 func defaultPasswordFile() string {
