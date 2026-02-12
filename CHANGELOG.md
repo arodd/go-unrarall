@@ -1,3 +1,5 @@
+- 2026-02-12 [feature] Added safe move handling with no-clobber destination suffixing and cross-device rename fallback copy support.
+- 2026-02-12 [feature] Added streaming RAR extraction primitives with full-path/flatten modes and traversal-safe archive path sanitization.
 - 2026-02-12 [feature] Added archive listing and skip-if-exists planning logic based on RAR entry names for full-path and flatten modes.
 - 2026-02-12 [feature] Added SFV parsing and CRC32 verification components with typed mismatch/missing reporting.
 - 2026-02-12 [feature] Added archive candidate scanning with depth controls and first-volume detection for `.rar`, `.part01.rar`, and `.001` naming schemes.
