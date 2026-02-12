@@ -66,7 +66,7 @@ func TestExtractFromArchiveReaderFullPath(t *testing.T) {
 		},
 	}
 
-	if err := extractFromArchiveReader(reader, root, true); err != nil {
+	if err := extractFromArchiveReader(reader, root, true, false); err != nil {
 		t.Fatalf("extractFromArchiveReader returned error: %v", err)
 	}
 
@@ -98,7 +98,7 @@ func TestExtractFromArchiveReaderFlatten(t *testing.T) {
 		},
 	}
 
-	if err := extractFromArchiveReader(reader, root, false); err != nil {
+	if err := extractFromArchiveReader(reader, root, false, false); err != nil {
 		t.Fatalf("extractFromArchiveReader returned error: %v", err)
 	}
 
@@ -124,7 +124,7 @@ func TestExtractFromArchiveReaderRejectsUnsafePath(t *testing.T) {
 		},
 	}
 
-	err := extractFromArchiveReader(reader, root, true)
+	err := extractFromArchiveReader(reader, root, true, false)
 	if err == nil {
 		t.Fatal("expected unsafe path error")
 	}
@@ -149,11 +149,77 @@ func TestExtractFromArchiveReaderRejectsSymlinkEntries(t *testing.T) {
 		},
 	}
 
-	err := extractFromArchiveReader(reader, root, true)
+	err := extractFromArchiveReader(reader, root, true, false)
 	if err == nil {
 		t.Fatal("expected symlink rejection error")
 	}
 	if !strings.Contains(err.Error(), "symlink") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestExtractFromArchiveReaderAllowsSafeSymlinkEntries(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	reader := &fakeArchiveReader{
+		entries: []fakeArchiveEntry{
+			{header: rardecode.FileHeader{Name: "release/file.txt"}, data: []byte("payload")},
+			{
+				header: rardecode.FileHeader{
+					Name:       "release/link.txt",
+					HostOS:     rardecode.HostOSUnix,
+					Attributes: 0xA000 | 0o777,
+				},
+				data: []byte("file.txt"),
+			},
+		},
+	}
+
+	if err := extractFromArchiveReader(reader, root, true, true); err != nil {
+		t.Fatalf("extractFromArchiveReader returned error: %v", err)
+	}
+
+	linkPath := filepath.Join(root, "release", "link.txt")
+	info, err := os.Lstat(linkPath)
+	if err != nil {
+		t.Fatalf("lstat symlink: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("expected symlink mode, got %v", info.Mode())
+	}
+
+	target, err := os.Readlink(linkPath)
+	if err != nil {
+		t.Fatalf("readlink: %v", err)
+	}
+	if target != "file.txt" {
+		t.Fatalf("symlink target=%q, want %q", target, "file.txt")
+	}
+}
+
+func TestExtractFromArchiveReaderRejectsEscapingSymlinkTarget(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	reader := &fakeArchiveReader{
+		entries: []fakeArchiveEntry{
+			{
+				header: rardecode.FileHeader{
+					Name:       "nested/link",
+					HostOS:     rardecode.HostOSUnix,
+					Attributes: 0xA000 | 0o777,
+				},
+				data: []byte("../../escape"),
+			},
+		},
+	}
+
+	err := extractFromArchiveReader(reader, root, true, true)
+	if err == nil {
+		t.Fatal("expected symlink target validation error")
+	}
+	if !strings.Contains(err.Error(), "escapes extraction root") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -209,7 +275,7 @@ func TestExtractToDirMultiVolumeSets(t *testing.T) {
 				return reader, nil
 			}
 
-			volumes, err := extractToDirWithOpener(opener, tc.archive, root, true)
+			volumes, err := extractToDirWithOpener(opener, tc.archive, root, true, false)
 			if err != nil {
 				t.Fatalf("extractToDirWithOpener returned error: %v", err)
 			}

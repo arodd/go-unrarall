@@ -151,6 +151,7 @@ func (r *runner) processCandidate(candidate finder.Candidate, depth int) (Stats,
 		tmpDir,
 		r.opts.FullPath,
 		r.opts.MaxDictBytes,
+		r.opts.AllowSymlinks,
 		r.opts.PasswordFile,
 	)
 	if extractErr == nil {
@@ -166,7 +167,7 @@ func (r *runner) processCandidate(candidate finder.Candidate, depth int) (Stats,
 		stats.add(nestedStats)
 	}
 
-	if err := moveExtractedArtifacts(tmpDir, destRoot); err != nil {
+	if err := moveExtractedArtifacts(tmpDir, destRoot, r.opts.AllowSymlinks); err != nil {
 		return stats, fmt.Errorf("move extracted artifacts for %q: %w", candidate.Path, err)
 	}
 	if err := os.RemoveAll(tmpDir); err != nil {
@@ -244,8 +245,8 @@ func destinationRoot(outputDir, rarDir string) string {
 	return rarDir
 }
 
-func moveExtractedArtifacts(tmpDir, destRoot string) error {
-	files, emptyDirs, err := collectExtractedArtifacts(tmpDir)
+func moveExtractedArtifacts(tmpDir, destRoot string, allowSymlinks bool) error {
+	files, emptyDirs, err := collectExtractedArtifacts(tmpDir, allowSymlinks)
 	if err != nil {
 		return err
 	}
@@ -270,7 +271,7 @@ func moveExtractedArtifacts(tmpDir, destRoot string) error {
 	return nil
 }
 
-func collectExtractedArtifacts(tmpDir string) ([]string, []string, error) {
+func collectExtractedArtifacts(tmpDir string, allowSymlinks bool) ([]string, []string, error) {
 	files := make([]string, 0, 16)
 	emptyDirs := make([]string, 0, 16)
 
@@ -295,6 +296,14 @@ func collectExtractedArtifacts(tmpDir string) ([]string, []string, error) {
 			if len(entries) == 0 {
 				emptyDirs = append(emptyDirs, rel)
 			}
+			return nil
+		}
+
+		if d.Type()&os.ModeSymlink != 0 {
+			if !allowSymlinks {
+				return fmt.Errorf("unsupported extracted symlink %q", path)
+			}
+			files = append(files, rel)
 			return nil
 		}
 

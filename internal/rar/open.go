@@ -23,6 +23,7 @@ func openArchiveReader(path string, opts ...rardecode.Option) (archiveReadCloser
 type OpenSettings struct {
 	MaxDictionaryBytes int64
 	Password           string
+	AllowSymlinks      bool
 }
 
 // DecodeOptions converts settings into rardecode options.

@@ -115,6 +115,7 @@ func TestRunRecursesIntoNestedArchives(t *testing.T) {
 		tmpDir string,
 		_ bool,
 		_ int64,
+		_ bool,
 		_ string,
 	) (PasswordExtractionResult, error) {
 		switch archivePath {
@@ -203,6 +204,7 @@ func TestRunForceStillRunsHooksAfterExtractionFailure(t *testing.T) {
 		tmpDir string,
 		_ bool,
 		_ int64,
+		_ bool,
 		_ string,
 	) (PasswordExtractionResult, error) {
 		return PasswordExtractionResult{}, errors.New("decode failed")
@@ -235,6 +237,39 @@ func TestRunForceStillRunsHooksAfterExtractionFailure(t *testing.T) {
 	}
 	if stats.ArchivesExtracted != 0 {
 		t.Fatalf("ArchivesExtracted=%d, want 0", stats.ArchivesExtracted)
+	}
+}
+
+func TestCollectExtractedArtifactsRejectsSymlinkWhenDisabled(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "file.txt"), []byte("ok"), 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	if err := os.Symlink("file.txt", filepath.Join(root, "link.txt")); err != nil {
+		t.Skipf("skipping symlink test: %v", err)
+	}
+
+	_, _, err := collectExtractedArtifacts(root, false)
+	if err == nil {
+		t.Fatal("expected symlink rejection error")
+	}
+}
+
+func TestCollectExtractedArtifactsAllowsSymlinkWhenEnabled(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "file.txt"), []byte("ok"), 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	if err := os.Symlink("file.txt", filepath.Join(root, "link.txt")); err != nil {
+		t.Skipf("skipping symlink test: %v", err)
+	}
+
+	files, _, err := collectExtractedArtifacts(root, true)
+	if err != nil {
+		t.Fatalf("collectExtractedArtifacts returned error: %v", err)
+	}
+	if len(files) != 2 {
+		t.Fatalf("expected 2 extracted items (file + symlink), got %d (%v)", len(files), files)
 	}
 }
 

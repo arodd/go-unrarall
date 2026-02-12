@@ -26,6 +26,7 @@ func Usage(program string) string {
 	b.WriteString("  -s, --disable-cksfv      Skip SFV verification (planned behavior).\n")
 	b.WriteString("      --clean=SPEC         none|all|hook1,hook2 (default: none).\n")
 	b.WriteString("      --full-path          Preserve full archive paths while extracting.\n")
+	b.WriteString("      --allow-symlinks     Allow symlink entries with in-tree target validation.\n")
 	b.WriteString("  -o, --output DIR         Output directory (must already exist).\n")
 	b.WriteString("      --depth N            Recursive scan depth (default: 4).\n")
 	b.WriteString("      --skip-if-exists     Skip extraction when files already exist.\n")

@@ -1,3 +1,5 @@
+- 2026-02-12 [docs] Added a public README with usage examples, cleanup hook docs, and vendored build instructions.
+- 2026-02-12 [feature] Added symlink hardening controls with `--allow-symlinks`, safe in-tree link validation, and symlink-aware move fallback support.
 - 2026-02-12 [feature] Added full app orchestration with SFV checks, skip-if-exists gating, temp extraction moves, run stats, and script-parity exit-code handling.
 - 2026-02-12 [feature] Added recursive nested extraction support to `--depth` with nested-run failure propagation.
 - 2026-02-12 [feature] Added executable cleanup hook registry/engine for `--clean` hooks (`nfo`, `rar`, junk file cleanup, folder cleanup, sample video cleanup, and empty folder pruning).

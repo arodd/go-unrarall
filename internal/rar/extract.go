@@ -8,12 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/austin/go-unrarall/internal/fsutil"
 	"github.com/nwaples/rardecode/v2"
 )
 
 const extractCopyBufferSize = 256 * 1024
+const maxSymlinkTargetBytes = 4096
 
 type archiveReader interface {
 	Next() (*rardecode.FileHeader, error)
@@ -23,14 +25,20 @@ type archiveReader interface {
 // ExtractToDir streams an archive into tmpDir. It supports full-path and
 // flattened extraction modes and returns the volume paths consumed by the
 // archive reader.
-func ExtractToDir(archivePath, tmpDir string, fullPath bool, opts ...rardecode.Option) ([]string, error) {
-	return extractToDirWithOpener(openArchiveReader, archivePath, tmpDir, fullPath, opts...)
+func ExtractToDir(
+	archivePath,
+	tmpDir string,
+	fullPath bool,
+	allowSymlinks bool,
+	opts ...rardecode.Option,
+) ([]string, error) {
+	return extractToDirWithOpener(openArchiveReader, archivePath, tmpDir, fullPath, allowSymlinks, opts...)
 }
 
 // ExtractToDirWithSettings is a convenience wrapper around ExtractToDir that
 // converts OpenSettings into decoder options.
 func ExtractToDirWithSettings(archivePath, tmpDir string, fullPath bool, settings OpenSettings) ([]string, error) {
-	return ExtractToDir(archivePath, tmpDir, fullPath, settings.DecodeOptions()...)
+	return ExtractToDir(archivePath, tmpDir, fullPath, settings.AllowSymlinks, settings.DecodeOptions()...)
 }
 
 func extractToDirWithOpener(
@@ -38,6 +46,7 @@ func extractToDirWithOpener(
 	archivePath string,
 	tmpDir string,
 	fullPath bool,
+	allowSymlinks bool,
 	opts ...rardecode.Option,
 ) ([]string, error) {
 	reader, err := opener(archivePath, opts...)
@@ -46,13 +55,13 @@ func extractToDirWithOpener(
 	}
 	defer reader.Close()
 
-	if err := extractFromArchiveReader(reader, tmpDir, fullPath); err != nil {
+	if err := extractFromArchiveReader(reader, tmpDir, fullPath, allowSymlinks); err != nil {
 		return nil, err
 	}
 	return reader.Volumes(), nil
 }
 
-func extractFromArchiveReader(reader archiveReader, tmpDir string, fullPath bool) error {
+func extractFromArchiveReader(reader archiveReader, tmpDir string, fullPath bool, allowSymlinks bool) error {
 	buf := make([]byte, extractCopyBufferSize)
 
 	for {
@@ -64,15 +73,24 @@ func extractFromArchiveReader(reader archiveReader, tmpDir string, fullPath bool
 			return err
 		}
 
-		if header.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("archive entry %q is a symlink and is not supported", header.Name)
-		}
-
 		relPath, err := entryPath(header, fullPath)
 		if err != nil {
 			return err
 		}
 		if relPath == "" {
+			continue
+		}
+
+		if header.Mode()&os.ModeSymlink != 0 {
+			if !allowSymlinks {
+				return fmt.Errorf(
+					"archive entry %q is a symlink and symlink extraction is disabled (use --allow-symlinks to override)",
+					header.Name,
+				)
+			}
+			if err := extractSymlink(reader, tmpDir, relPath); err != nil {
+				return fmt.Errorf("extract symlink %q: %w", header.Name, err)
+			}
 			continue
 		}
 
@@ -114,6 +132,74 @@ func extractFromArchiveReader(reader archiveReader, tmpDir string, fullPath bool
 		applyModTime(target, header.ModificationTime)
 	}
 	return nil
+}
+
+func extractSymlink(reader io.Reader, tmpDir, relPath string) error {
+	targetValue, err := decodeSymlinkTarget(reader)
+	if err != nil {
+		return err
+	}
+
+	linkTarget, err := sanitizeSymlinkTarget(relPath, targetValue)
+	if err != nil {
+		return err
+	}
+
+	linkPath := filepath.Join(tmpDir, relPath)
+	if err := os.MkdirAll(filepath.Dir(linkPath), 0o755); err != nil {
+		return err
+	}
+	if err := os.Symlink(linkTarget, linkPath); err != nil {
+		return err
+	}
+	return nil
+}
+
+func decodeSymlinkTarget(reader io.Reader) (string, error) {
+	raw, err := io.ReadAll(io.LimitReader(reader, maxSymlinkTargetBytes+1))
+	if err != nil {
+		return "", err
+	}
+	if len(raw) > maxSymlinkTargetBytes {
+		return "", fmt.Errorf("symlink target exceeds %d bytes", maxSymlinkTargetBytes)
+	}
+
+	value := strings.TrimRight(string(raw), "\x00")
+	if value == "" {
+		return "", fmt.Errorf("symlink target is empty")
+	}
+	if strings.ContainsRune(value, 0) {
+		return "", fmt.Errorf("symlink target contains NUL")
+	}
+	return value, nil
+}
+
+func sanitizeSymlinkTarget(linkRelPath, rawTarget string) (string, error) {
+	normalized := strings.ReplaceAll(rawTarget, "\\", "/")
+	cleaned := path.Clean(normalized)
+	if cleaned == "." || cleaned == ".." || cleaned == "/" {
+		return "", fmt.Errorf("unsafe symlink target %q", rawTarget)
+	}
+	if strings.HasPrefix(cleaned, "/") {
+		return "", fmt.Errorf("absolute symlink target %q is not allowed", rawTarget)
+	}
+	if hasDrivePrefix(cleaned) {
+		return "", fmt.Errorf("symlink target %q has a drive prefix", rawTarget)
+	}
+
+	baseDir := path.Dir(filepath.ToSlash(linkRelPath))
+	resolved := path.Clean(path.Join(baseDir, cleaned))
+	if resolved == ".." || strings.HasPrefix(resolved, "../") {
+		return "", fmt.Errorf("symlink target %q escapes extraction root", rawTarget)
+	}
+	return filepath.FromSlash(cleaned), nil
+}
+
+func hasDrivePrefix(pathValue string) bool {
+	if len(pathValue) < 2 || pathValue[1] != ':' {
+		return false
+	}
+	return unicode.IsLetter(rune(pathValue[0]))
 }
 
 func entryPath(header *rardecode.FileHeader, fullPath bool) (string, error) {

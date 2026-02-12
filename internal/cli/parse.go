@@ -19,6 +19,7 @@ type Options struct {
 	Depth         int
 	SkipIfExists  bool
 	FullPath      bool
+	AllowSymlinks bool
 	Force         bool
 	DryRun        bool
 	Quiet         bool
@@ -58,6 +59,7 @@ func ParseArgs(args []string) (Options, error) {
 	fs.BoolVar(&disableCK, "disable-cksfv", false, "")
 	fs.BoolVar(&disableCK, "s", false, "")
 	fs.BoolVar(&opts.FullPath, "full-path", false, "")
+	fs.BoolVar(&opts.AllowSymlinks, "allow-symlinks", false, "")
 	fs.IntVar(&opts.Depth, "depth", 4, "")
 	fs.BoolVar(&opts.SkipIfExists, "skip-if-exists", false, "")
 	fs.StringVar(&opts.OutputDir, "output", "", "")

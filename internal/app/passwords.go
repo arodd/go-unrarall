@@ -51,6 +51,7 @@ func ExtractArchiveWithPasswords(
 	tmpDir string,
 	fullPath bool,
 	maxDictBytes int64,
+	allowSymlinks bool,
 	passwordFile string,
 ) (PasswordExtractionResult, error) {
 	return extractArchiveWithPasswords(
@@ -59,6 +60,7 @@ func ExtractArchiveWithPasswords(
 		tmpDir,
 		fullPath,
 		maxDictBytes,
+		allowSymlinks,
 		passwordFile,
 	)
 }
@@ -69,10 +71,12 @@ func extractArchiveWithPasswords(
 	tmpDir string,
 	fullPath bool,
 	maxDictBytes int64,
+	allowSymlinks bool,
 	passwordFile string,
 ) (PasswordExtractionResult, error) {
 	settings := rar.OpenSettings{
 		MaxDictionaryBytes: maxDictBytes,
+		AllowSymlinks:      allowSymlinks,
 	}
 
 	volumes, err := extract(archivePath, tmpDir, fullPath, settings)

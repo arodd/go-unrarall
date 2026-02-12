@@ -13,8 +13,9 @@ import (
 )
 
 type extractionAttempt struct {
-	Password string
-	MaxDict  int64
+	Password      string
+	MaxDict       int64
+	AllowSymlinks bool
 }
 
 func TestExtractArchiveWithPasswordsUnencrypted(t *testing.T) {
@@ -23,8 +24,9 @@ func TestExtractArchiveWithPasswordsUnencrypted(t *testing.T) {
 	var attempts []extractionAttempt
 	extract := func(_ string, _ string, _ bool, settings rar.OpenSettings) ([]string, error) {
 		attempts = append(attempts, extractionAttempt{
-			Password: settings.Password,
-			MaxDict:  settings.MaxDictionaryBytes,
+			Password:      settings.Password,
+			MaxDict:       settings.MaxDictionaryBytes,
+			AllowSymlinks: settings.AllowSymlinks,
 		})
 		return []string{"release.rar"}, nil
 	}
@@ -35,6 +37,7 @@ func TestExtractArchiveWithPasswordsUnencrypted(t *testing.T) {
 		t.TempDir(),
 		true,
 		1<<20,
+		false,
 		"/unused/passwords.txt",
 	)
 	if err != nil {
@@ -50,7 +53,7 @@ func TestExtractArchiveWithPasswordsUnencrypted(t *testing.T) {
 	if !reflect.DeepEqual(result.Volumes, []string{"release.rar"}) {
 		t.Fatalf("volumes=%v, want %v", result.Volumes, []string{"release.rar"})
 	}
-	if !reflect.DeepEqual(attempts, []extractionAttempt{{Password: "", MaxDict: 1 << 20}}) {
+	if !reflect.DeepEqual(attempts, []extractionAttempt{{Password: "", MaxDict: 1 << 20, AllowSymlinks: false}}) {
 		t.Fatalf("attempts=%v", attempts)
 	}
 }
@@ -67,8 +70,9 @@ func TestExtractArchiveWithPasswordsRetriesPasswordFile(t *testing.T) {
 	var attempts []extractionAttempt
 	extract := func(_ string, _ string, _ bool, settings rar.OpenSettings) ([]string, error) {
 		attempts = append(attempts, extractionAttempt{
-			Password: settings.Password,
-			MaxDict:  settings.MaxDictionaryBytes,
+			Password:      settings.Password,
+			MaxDict:       settings.MaxDictionaryBytes,
+			AllowSymlinks: settings.AllowSymlinks,
 		})
 		switch settings.Password {
 		case "":
@@ -86,6 +90,7 @@ func TestExtractArchiveWithPasswordsRetriesPasswordFile(t *testing.T) {
 		t.TempDir(),
 		false,
 		1<<21,
+		true,
 		passwordFile,
 	)
 	if err != nil {
@@ -104,9 +109,9 @@ func TestExtractArchiveWithPasswordsRetriesPasswordFile(t *testing.T) {
 	}
 
 	wantAttempts := []extractionAttempt{
-		{Password: "", MaxDict: 1 << 21},
-		{Password: "wrong", MaxDict: 1 << 21},
-		{Password: "secret", MaxDict: 1 << 21},
+		{Password: "", MaxDict: 1 << 21, AllowSymlinks: true},
+		{Password: "wrong", MaxDict: 1 << 21, AllowSymlinks: true},
+		{Password: "secret", MaxDict: 1 << 21, AllowSymlinks: true},
 	}
 	if !reflect.DeepEqual(attempts, wantAttempts) {
 		t.Fatalf("attempts=%v, want %v", attempts, wantAttempts)
@@ -126,6 +131,7 @@ func TestExtractArchiveWithPasswordsMissingPasswordFile(t *testing.T) {
 		t.TempDir(),
 		true,
 		1<<20,
+		false,
 		filepath.Join(t.TempDir(), "missing.txt"),
 	)
 	if err == nil {
@@ -160,6 +166,7 @@ func TestExtractArchiveWithPasswordsEmptyPasswordFile(t *testing.T) {
 		t.TempDir(),
 		true,
 		1<<20,
+		false,
 		passwordFile,
 	)
 	if err == nil {
@@ -189,6 +196,7 @@ func TestExtractArchiveWithPasswordsPassesThroughNonPasswordError(t *testing.T) 
 		t.TempDir(),
 		true,
 		1<<20,
+		false,
 		"/unused",
 	)
 	if !errors.Is(err, expected) {

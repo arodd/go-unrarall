@@ -141,6 +141,100 @@ func TestSafeMoveDirectoryFallbackOnEXDEV(t *testing.T) {
 	}
 }
 
+func TestSafeMoveSymlinkFallbackOnEXDEV(t *testing.T) {
+	originalRename := renamePath
+	renamePath = func(oldPath, newPath string) error {
+		return &os.LinkError{Op: "rename", Old: oldPath, New: newPath, Err: syscall.EXDEV}
+	}
+	t.Cleanup(func() {
+		renamePath = originalRename
+	})
+
+	root := t.TempDir()
+	src := filepath.Join(root, "link.txt")
+	dst := filepath.Join(root, "moved-link.txt")
+	if err := os.WriteFile(filepath.Join(root, "target.txt"), []byte("payload"), 0o644); err != nil {
+		t.Fatalf("write target file: %v", err)
+	}
+	mustSymlinkOrSkip(t, "target.txt", src)
+
+	final, err := SafeMove(src, dst)
+	if err != nil {
+		t.Fatalf("SafeMove returned error: %v", err)
+	}
+	if final != dst {
+		t.Fatalf("SafeMove final path=%q, want %q", final, dst)
+	}
+	if _, err := os.Lstat(src); !os.IsNotExist(err) {
+		t.Fatalf("source symlink still exists: %v", err)
+	}
+
+	info, err := os.Lstat(dst)
+	if err != nil {
+		t.Fatalf("lstat destination symlink: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("expected symlink destination, got mode %v", info.Mode())
+	}
+	target, err := os.Readlink(dst)
+	if err != nil {
+		t.Fatalf("readlink destination: %v", err)
+	}
+	if target != "target.txt" {
+		t.Fatalf("symlink target=%q, want %q", target, "target.txt")
+	}
+}
+
+func TestSafeMoveDirectoryFallbackCopiesSymlinksOnEXDEV(t *testing.T) {
+	originalRename := renamePath
+	renamePath = func(oldPath, newPath string) error {
+		return &os.LinkError{Op: "rename", Old: oldPath, New: newPath, Err: syscall.EXDEV}
+	}
+	t.Cleanup(func() {
+		renamePath = originalRename
+	})
+
+	root := t.TempDir()
+	src := filepath.Join(root, "srcdir")
+	dst := filepath.Join(root, "destdir")
+	if err := os.MkdirAll(src, 0o755); err != nil {
+		t.Fatalf("mkdir source tree: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(src, "nested"), 0o755); err != nil {
+		t.Fatalf("mkdir nested source tree: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "nested", "file.txt"), []byte("payload"), 0o644); err != nil {
+		t.Fatalf("write symlink target file: %v", err)
+	}
+	mustSymlinkOrSkip(t, "nested/file.txt", filepath.Join(src, "shortcut"))
+
+	final, err := SafeMove(src, dst)
+	if err != nil {
+		t.Fatalf("SafeMove returned error: %v", err)
+	}
+	if final != dst {
+		t.Fatalf("SafeMove final path=%q, want %q", final, dst)
+	}
+	if _, err := os.Stat(src); !os.IsNotExist(err) {
+		t.Fatalf("source directory still exists: %v", err)
+	}
+
+	info, err := os.Lstat(filepath.Join(dst, "shortcut"))
+	if err != nil {
+		t.Fatalf("lstat copied symlink: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("expected copied symlink, got mode %v", info.Mode())
+	}
+	target, err := os.Readlink(filepath.Join(dst, "shortcut"))
+	if err != nil {
+		t.Fatalf("readlink copied symlink: %v", err)
+	}
+	if target != "nested/file.txt" {
+		t.Fatalf("copied symlink target=%q, want %q", target, "nested/file.txt")
+	}
+}
+
 func TestSafeMoveSourceMissing(t *testing.T) {
 	t.Parallel()
 
@@ -151,5 +245,12 @@ func TestSafeMoveSourceMissing(t *testing.T) {
 	}
 	if !strings.Contains(strings.ToLower(err.Error()), "no such file") {
 		t.Fatalf("expected missing file error, got %v", err)
+	}
+}
+
+func mustSymlinkOrSkip(t *testing.T, target, linkPath string) {
+	t.Helper()
+	if err := os.Symlink(target, linkPath); err != nil {
+		t.Skipf("skipping symlink test: %v", err)
 	}
 }

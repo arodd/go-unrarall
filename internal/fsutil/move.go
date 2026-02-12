@@ -73,7 +73,7 @@ func copyPath(src, dst string) error {
 		return err
 	}
 	if info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("symlink copy is not supported for %q", src)
+		return copySymlink(src, dst)
 	}
 
 	if info.IsDir() {
@@ -120,7 +120,7 @@ func copyDir(src, dst string, rootInfo fs.FileInfo) error {
 		}
 
 		if entryInfo.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("symlink copy is not supported for %q", path)
+			return copySymlink(path, target)
 		}
 		if !entryInfo.Mode().IsRegular() {
 			return fmt.Errorf("unsupported file type %q", path)
@@ -170,6 +170,18 @@ func copyFile(src, dst string, info fs.FileInfo) error {
 		_ = os.Chtimes(dst, time.Now(), info.ModTime())
 	}
 	return nil
+}
+
+func copySymlink(src, dst string) error {
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+
+	target, err := os.Readlink(src)
+	if err != nil {
+		return err
+	}
+	return os.Symlink(target, dst)
 }
 
 func filePerm(mode fs.FileMode) fs.FileMode {
