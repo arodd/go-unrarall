@@ -1,3 +1,4 @@
+- 2026-02-13 [bug] Renamed module and internal import paths to `github.com/arodd/go-unrarall`.
 - 2026-02-13 [docs] Documented script-parity depth, skip-if-exists, cleanup order, and allow-failures semantics in the public README.
 - 2026-02-13 [bug] Aligned script-parity behavior for `--clean=`, quiet/verbose precedence, unbounded candidate scanning, cleanup hook order, and skip/allow-failures handling.
 - 2026-02-13 [feature] Added `--log-file FILE` append-mode output tee support across help/version/runtime/parse-error paths with CLI, logger, and command tests.

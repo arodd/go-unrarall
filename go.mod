@@ -1,4 +1,4 @@
-module github.com/austin/go-unrarall
+module github.com/arodd/go-unrarall
 
 go 1.25.4
 

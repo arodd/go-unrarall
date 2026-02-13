@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/austin/go-unrarall/internal/rar"
+	"github.com/arodd/go-unrarall/internal/rar"
 	"github.com/nwaples/rardecode/v2"
 )
 

@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/austin/go-unrarall/internal/rar"
+	"github.com/arodd/go-unrarall/internal/rar"
 )
 
 // PasswordExtractionResult captures password retry metadata for a successful

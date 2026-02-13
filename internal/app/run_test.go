@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/austin/go-unrarall/internal/cli"
-	"github.com/austin/go-unrarall/internal/finder"
-	"github.com/austin/go-unrarall/internal/log"
+	"github.com/arodd/go-unrarall/internal/cli"
+	"github.com/arodd/go-unrarall/internal/finder"
+	"github.com/arodd/go-unrarall/internal/log"
 	"github.com/nwaples/rardecode/v2"
 )
 

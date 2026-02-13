@@ -10,7 +10,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/austin/go-unrarall/internal/fsutil"
+	"github.com/arodd/go-unrarall/internal/fsutil"
 	"github.com/nwaples/rardecode/v2"
 )
 

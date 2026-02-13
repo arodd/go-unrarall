@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/austin/go-unrarall/internal/hooks"
+	"github.com/arodd/go-unrarall/internal/hooks"
 )
 
 // Usage renders command usage text.

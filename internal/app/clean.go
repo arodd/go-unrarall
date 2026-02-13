@@ -1,8 +1,8 @@
 package app
 
 import (
-	"github.com/austin/go-unrarall/internal/hooks"
-	"github.com/austin/go-unrarall/internal/log"
+	"github.com/arodd/go-unrarall/internal/hooks"
+	"github.com/arodd/go-unrarall/internal/log"
 )
 
 func shouldRunHooks(selected []string) bool {

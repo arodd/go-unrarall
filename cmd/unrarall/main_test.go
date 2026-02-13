@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/austin/go-unrarall/internal/app"
-	"github.com/austin/go-unrarall/internal/cli"
-	logpkg "github.com/austin/go-unrarall/internal/log"
+	"github.com/arodd/go-unrarall/internal/app"
+	"github.com/arodd/go-unrarall/internal/cli"
+	logpkg "github.com/arodd/go-unrarall/internal/log"
 )
 
 func TestRunWithIOHelpWritesToConsoleAndLogFile(t *testing.T) {

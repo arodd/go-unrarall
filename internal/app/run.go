@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/austin/go-unrarall/internal/cli"
-	"github.com/austin/go-unrarall/internal/finder"
-	"github.com/austin/go-unrarall/internal/fsutil"
-	"github.com/austin/go-unrarall/internal/log"
-	"github.com/austin/go-unrarall/internal/rar"
-	"github.com/austin/go-unrarall/internal/sfv"
+	"github.com/arodd/go-unrarall/internal/cli"
+	"github.com/arodd/go-unrarall/internal/finder"
+	"github.com/arodd/go-unrarall/internal/fsutil"
+	"github.com/arodd/go-unrarall/internal/log"
+	"github.com/arodd/go-unrarall/internal/rar"
+	"github.com/arodd/go-unrarall/internal/sfv"
 )
 
 var (

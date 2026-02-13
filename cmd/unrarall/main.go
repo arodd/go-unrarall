@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/austin/go-unrarall/internal/app"
-	"github.com/austin/go-unrarall/internal/cli"
-	"github.com/austin/go-unrarall/internal/log"
+	"github.com/arodd/go-unrarall/internal/app"
+	"github.com/arodd/go-unrarall/internal/cli"
+	"github.com/arodd/go-unrarall/internal/log"
 )
 
 const version = "0.1.0"

@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/austin/go-unrarall/internal/log"
+	"github.com/arodd/go-unrarall/internal/log"
 )
 
 var sampleVideoPattern = `(?i)^sample.*%s\.(asf|avi|mkv|mp4|m4v|mov|mpg|mpeg|ogg|webm|wmv)$`

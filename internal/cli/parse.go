@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/austin/go-unrarall/internal/hooks"
+	"github.com/arodd/go-unrarall/internal/hooks"
 )
 
 // Options contains parsed command-line options.
