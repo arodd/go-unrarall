@@ -25,6 +25,8 @@ var (
 	runCleanupSelection       = runCleanupHooks
 )
 
+const scanDepthUnbounded = -1
+
 // Stats tracks extraction outcomes across a run.
 type Stats struct {
 	ArchivesFound     int
@@ -45,10 +47,14 @@ func ExitCode(stats Stats, allowFailures bool) int {
 	if stats.Failures == 0 {
 		return 0
 	}
-	if allowFailures && stats.ArchivesExtracted > 0 {
+	if allowFailures && successfulArchives(stats) > 0 {
 		return 0
 	}
 	return 1
+}
+
+func successfulArchives(stats Stats) int {
+	return stats.ArchivesExtracted + stats.ArchivesSkipped
 }
 
 type runner struct {
@@ -73,7 +79,7 @@ func Run(opts cli.Options, logger *log.Logger) (Stats, error) {
 }
 
 func (r *runner) runDirectory(dir string, depth int) (Stats, error) {
-	candidates, err := scanCandidates(dir, depth)
+	candidates, err := scanCandidates(dir, scanDepthUnbounded)
 	if err != nil {
 		return Stats{}, err
 	}
@@ -117,8 +123,10 @@ func (r *runner) processCandidate(candidate finder.Candidate, depth int) (Stats,
 		r.log.Errorf("SFV verification failed for %q, continuing due to --force: %v", candidate.Path, sfvErr)
 	}
 
-	if r.opts.SkipIfExists && !r.opts.Force && sfvErr == nil {
-		skip, err := checkAlreadyExtracted(candidate.Path, destRoot, r.opts.FullPath)
+	if r.opts.SkipIfExists && !r.opts.Force && !r.opts.DryRun && sfvErr == nil {
+		// Script parity: skip checks are evaluated relative to the archive directory.
+		skipRoot := rarDir
+		skip, err := checkAlreadyExtracted(candidate.Path, skipRoot, r.opts.FullPath)
 		if err != nil {
 			r.log.Verbosef("Skip-if-exists check failed for %q: %v", candidate.Path, err)
 		} else if skip {
@@ -220,11 +228,12 @@ func (r *runner) verifySFVIfPresent(rarDir, stem string) error {
 }
 
 func (r *runner) logSummary(stats Stats) {
-	if stats.ArchivesExtracted > 0 {
+	successes := successfulArchives(stats)
+	if successes > 0 {
 		if shouldRunHooks(r.opts.CleanHooks) {
-			r.log.Infof("%d rar file(s) found, extracted, and cleaned.", stats.ArchivesExtracted)
+			r.log.Infof("%d rar file(s) found, extracted, and cleaned.", successes)
 		} else {
-			r.log.Infof("%d rar file(s) found and extracted.", stats.ArchivesExtracted)
+			r.log.Infof("%d rar file(s) found and extracted.", successes)
 		}
 	} else {
 		r.log.Infof("no rar files extracted")
@@ -232,8 +241,8 @@ func (r *runner) logSummary(stats Stats) {
 
 	if stats.Failures > 0 {
 		r.log.Errorf("%d failure(s)", stats.Failures)
-		if r.opts.AllowFailures && stats.ArchivesExtracted > 0 {
-			r.log.Infof("%d success(es)", stats.ArchivesExtracted)
+		if r.opts.AllowFailures && successes > 0 {
+			r.log.Infof("%d success(es)", successes)
 		}
 	}
 }

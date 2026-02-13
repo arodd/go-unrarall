@@ -120,3 +120,53 @@ func TestParseArgsRejectsMissingLogFileValue(t *testing.T) {
 		t.Fatal("expected missing log-file value error")
 	}
 }
+
+func TestParseArgsQuietOverridesVerbose(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "verbose then quiet",
+			args: []string{"unrarall", "--verbose", "--quiet", root},
+		},
+		{
+			name: "quiet then verbose",
+			args: []string{"unrarall", "--quiet", "--verbose", root},
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			opts, err := ParseArgs(tc.args)
+			if err != nil {
+				t.Fatalf("ParseArgs returned error: %v", err)
+			}
+			if !opts.Quiet {
+				t.Fatal("expected Quiet=true")
+			}
+			if opts.Verbose {
+				t.Fatal("expected Verbose=false when quiet is enabled")
+			}
+		})
+	}
+}
+
+func TestParseArgsRejectsEmptyCleanSpec(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	_, err := ParseArgs([]string{"unrarall", "--clean=", root})
+	if err == nil {
+		t.Fatal("expected empty --clean error")
+	}
+	if !strings.Contains(err.Error(), "clean up hooks must be specified when using --clean=") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

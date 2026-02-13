@@ -10,14 +10,14 @@ type definition struct {
 
 var definitions = []definition{
 	{
+		Name: "covers_folders",
+		Help: "Remove directories named covers recursively from the extraction root.",
+		Run:  runCoversFolders,
+	},
+	{
 		Name: "nfo",
 		Help: "Remove <stem>.nfo from the extraction root.",
 		Run:  runNFO,
-	},
-	{
-		Name: "rar",
-		Help: "Remove RAR volumes and matching SFV files next to the archive.",
-		Run:  runRAR,
 	},
 	{
 		Name: "osx_junk",
@@ -25,19 +25,14 @@ var definitions = []definition{
 		Run:  runOSXJunk,
 	},
 	{
-		Name: "windows_junk",
-		Help: "Remove Thumbs.db from the extraction root.",
-		Run:  runWindowsJunk,
-	},
-	{
-		Name: "covers_folders",
-		Help: "Remove directories named covers recursively from the extraction root.",
-		Run:  runCoversFolders,
-	},
-	{
 		Name: "proof_folders",
 		Help: "Remove directories named proof recursively from the extraction root.",
 		Run:  runProofFolders,
+	},
+	{
+		Name: "rar",
+		Help: "Remove RAR volumes and matching SFV files next to the archive.",
+		Run:  runRAR,
 	},
 	{
 		Name: "sample_folders",
@@ -48,6 +43,11 @@ var definitions = []definition{
 		Name: "sample_videos",
 		Help: "Remove root sample video files related to the archive stem.",
 		Run:  runSampleVideos,
+	},
+	{
+		Name: "windows_junk",
+		Help: "Remove Thumbs.db from the extraction root.",
+		Run:  runWindowsJunk,
 	},
 	{
 		Name: "empty_folders",

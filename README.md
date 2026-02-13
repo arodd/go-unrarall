@@ -13,7 +13,7 @@ It targets practical parity with the original `unrarall` shell workflow while av
 - Extracts archives in-process (including multi-volume sets).
 - Optionally verifies SFV CRC32 manifests before extraction.
 - Supports password retries from a password file.
-- Supports recursive nested extraction up to `--depth`.
+- Supports recursive nested extraction up to `--depth` while keeping top-level candidate scanning unbounded.
 - Supports cleanup hooks (`--clean`) for post-extraction cleanup.
 
 ## Build
@@ -108,13 +108,13 @@ Run cleanup hooks after extraction:
 - `-q, --quiet`: suppress command output.
 - `-d, --dry`: dry-run mode.
 - `-f, --force`: continue candidate processing when SFV/extraction checks fail and allow cleanup hooks after extraction errors.
-- `--allow-failures`: return exit code `0` when there is at least one extracted archive, even if some candidates failed.
+- `--allow-failures`: return exit code `0` when there is at least one successful candidate (extracted or skipped), even if some candidates failed.
 - `-s, --disable-cksfv`: disable SFV verification for `<stem>.sfv` manifests.
 - `--clean=SPEC`: `none|all|hook1,hook2`.
 - `--full-path`: preserve archive paths while extracting.
 - `-o, --output DIR`: output directory (must already exist).
 - `--log-file FILE`: append command output to `FILE` without changing normal stdout/stderr behavior.
-- `--depth N`: recursive scan depth (default `4`).
+- `--depth N`: nested recursion depth budget (default `4`); top-level candidate scanning remains unbounded.
 - `--skip-if-exists`: skip extraction if all archive entries already exist by name.
 - `--password-file FILE`: password source file (default `~/.unrar_passwords`).
 - `--max-dict BYTES`: max RAR dictionary size (default `1073741824`, 1 GiB).
@@ -124,14 +124,14 @@ Run cleanup hooks after extraction:
 
 Available hook names for `--clean=`:
 
-- `nfo`
-- `rar`
-- `osx_junk`
-- `windows_junk`
 - `covers_folders`
+- `nfo`
+- `osx_junk`
 - `proof_folders`
+- `rar`
 - `sample_folders`
 - `sample_videos`
+- `windows_junk`
 - `empty_folders`
 
 Special values:
@@ -145,7 +145,7 @@ This section documents current runtime behavior from `internal/app` and related 
 
 ### Candidate detection
 
-- Candidate files are discovered by scanning the target directory tree up to `--depth`.
+- Candidate files are discovered by scanning the full target directory tree (unbounded depth).
 - Accepted first-volume candidates are:
   - `*.rar` (including single-volume archives)
   - `*.part01.rar` / `*.part1.rar`
@@ -165,8 +165,9 @@ This section documents current runtime behavior from `internal/app` and related 
 
 - `--skip-if-exists` is only applied when:
   - `--force` is not set; and
+  - `--dry` is not set; and
   - SFV verification did not fail.
-- The check compares archive entry names against destination files:
+- The check compares archive entry names against files in the archive directory (script parity), even when `--output` is set:
   - in `--full-path` mode, entry relative paths are respected;
   - otherwise basenames are used (flatten-style matching).
 - If listing/checking fails, extraction continues (best-effort skip gate).
@@ -189,7 +190,8 @@ This section documents current runtime behavior from `internal/app` and related 
 
 ### Recursion and depth
 
-- After successful extraction, nested candidate scanning runs inside the temp output with `depth-1`.
+- After successful extraction, nested candidate scanning runs inside the temp output.
+- `--depth` only controls whether nested recursive passes continue (`depth-1` per recursion level).
 - Recursion stops when depth drops below zero.
 - Nested failures propagate into parent run failure accounting.
 
@@ -212,7 +214,7 @@ This section documents current runtime behavior from `internal/app` and related 
 `go-unrarall` exits with:
 
 - `0` when there are no failures.
-- `0` when there are failures, `--allow-failures` is set, and at least one archive was extracted.
+- `0` when there are failures, `--allow-failures` is set, and at least one candidate succeeded (extracted or skipped).
 - `1` for argument/validation errors or when failures remain under all other conditions.
 
 ## Troubleshooting
@@ -251,8 +253,9 @@ This section documents current runtime behavior from `internal/app` and related 
 
 - Cause: one or more expected destination files were missing, or archive listing failed.
 - Check:
-  - destination path (`--output` vs archive directory);
+  - files in the archive directory (skip checks are rooted there for script parity);
   - `--full-path` mode differences;
+  - whether `--dry` is set (dry-run bypasses skip checks);
   - whether `--force` was set (which bypasses skip-if-exists).
 
 ## Compatibility Notes

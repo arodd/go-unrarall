@@ -1,3 +1,5 @@
+- 2026-02-13 [docs] Documented script-parity depth, skip-if-exists, cleanup order, and allow-failures semantics in the public README.
+- 2026-02-13 [bug] Aligned script-parity behavior for `--clean=`, quiet/verbose precedence, unbounded candidate scanning, cleanup hook order, and skip/allow-failures handling.
 - 2026-02-13 [feature] Added `--log-file FILE` append-mode output tee support across help/version/runtime/parse-error paths with CLI, logger, and command tests.
 - 2026-02-13 [docs] Added architecture reference docs plus README behavior/exit/troubleshooting guidance and updated CLI help wording to match implemented behavior.
 - 2026-02-12 [docs] Added a public README with usage examples, cleanup hook docs, and vendored build instructions.

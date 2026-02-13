@@ -7,7 +7,8 @@ import (
 	"strings"
 )
 
-// Scan walks root up to maxDepth and returns first-volume candidate archives.
+// Scan walks root and returns first-volume candidate archives.
+// A negative maxDepth means unbounded scanning.
 func Scan(root string, maxDepth int) ([]Candidate, error) {
 	candidates := make([]Candidate, 0, 16)
 
@@ -20,7 +21,7 @@ func Scan(root string, maxDepth int) ([]Candidate, error) {
 		if err != nil {
 			return err
 		}
-		if depth > maxDepth {
+		if maxDepth >= 0 && depth > maxDepth {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}

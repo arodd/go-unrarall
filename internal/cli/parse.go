@@ -78,8 +78,9 @@ func ParseArgs(args []string) (Options, error) {
 		return Options{}, err
 	}
 
-	if opts.Verbose && opts.Quiet {
-		return Options{}, fmt.Errorf("--verbose and --quiet cannot be used together")
+	if opts.Quiet {
+		// Match script parity: quiet suppresses output even if verbose is also set.
+		opts.Verbose = false
 	}
 	if opts.Depth < 0 {
 		return Options{}, fmt.Errorf("--depth must be >= 0")
@@ -171,7 +172,7 @@ func validatePaths(opts Options) error {
 func parseCleanHooks(spec string) ([]string, error) {
 	spec = strings.TrimSpace(spec)
 	if spec == "" {
-		return []string{"none"}, nil
+		return nil, fmt.Errorf("clean up hooks must be specified when using --clean=")
 	}
 
 	parts := strings.Split(spec, ",")

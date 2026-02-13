@@ -89,6 +89,22 @@ func TestScanRespectsDepthAndFilters(t *testing.T) {
 	if !reflect.DeepEqual(gotDepth1, wantDepth1) {
 		t.Fatalf("depth 1 candidates = %v, want %v", gotDepth1, wantDepth1)
 	}
+
+	candidatesUnbounded, err := Scan(root, -1)
+	if err != nil {
+		t.Fatalf("Scan unbounded returned error: %v", err)
+	}
+	gotUnbounded := candidateNames(candidatesUnbounded)
+	wantUnbounded := []string{
+		"deep.part1.rar",
+		"movie.rar",
+		"pack.001",
+		"series.part01.rar",
+		"too-deep.rar",
+	}
+	if !reflect.DeepEqual(gotUnbounded, wantUnbounded) {
+		t.Fatalf("unbounded candidates = %v, want %v", gotUnbounded, wantUnbounded)
+	}
 }
 
 func mustTouch(t *testing.T, path string) {

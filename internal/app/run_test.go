@@ -39,6 +39,12 @@ func TestExitCode(t *testing.T) {
 			want:          0,
 		},
 		{
+			name:          "allow failures with skipped archives",
+			stats:         Stats{ArchivesSkipped: 1, Failures: 2},
+			allowFailures: true,
+			want:          0,
+		},
+		{
 			name:          "allow failures without successes",
 			stats:         Stats{ArchivesExtracted: 0, Failures: 2},
 			allowFailures: true,
@@ -79,13 +85,13 @@ func TestRunRecursesIntoNestedArchives(t *testing.T) {
 		scanCalls++
 		switch dir {
 		case root:
-			if depth != 1 {
-				t.Fatalf("top-level depth=%d, want 1", depth)
+			if depth != -1 {
+				t.Fatalf("top-level scan depth=%d, want -1 (unbounded)", depth)
 			}
 			return []finder.Candidate{{Path: topArchive, Stem: "top"}}, nil
 		case topTmpDir:
-			if depth != 0 {
-				t.Fatalf("nested depth=%d, want 0", depth)
+			if depth != -1 {
+				t.Fatalf("nested scan depth=%d, want -1 (unbounded)", depth)
 			}
 			return []finder.Candidate{{Path: filepath.Join(topTmpDir, "nested.rar"), Stem: "nested"}}, nil
 		default:
@@ -270,6 +276,189 @@ func TestCollectExtractedArtifactsAllowsSymlinkWhenEnabled(t *testing.T) {
 	}
 	if len(files) != 2 {
 		t.Fatalf("expected 2 extracted items (file + symlink), got %d (%v)", len(files), files)
+	}
+}
+
+func TestRunDepthZeroStillProcessesDeepCandidates(t *testing.T) {
+	root := t.TempDir()
+	deepDir := filepath.Join(root, "level1", "level2")
+	if err := os.MkdirAll(deepDir, 0o755); err != nil {
+		t.Fatalf("mkdir deep dir: %v", err)
+	}
+	deepArchive := filepath.Join(deepDir, "deep.rar")
+	if err := os.WriteFile(deepArchive, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write deep archive: %v", err)
+	}
+
+	restore := stubRunDependencies()
+	defer restore()
+
+	validateRarSignature = func(path string) (bool, error) {
+		return true, nil
+	}
+	extractArchiveWithRetries = func(
+		archivePath string,
+		tmpDir string,
+		_ bool,
+		_ int64,
+		_ bool,
+		_ string,
+	) (PasswordExtractionResult, error) {
+		if archivePath != deepArchive {
+			return PasswordExtractionResult{}, errors.New("unexpected archive path")
+		}
+		if err := os.WriteFile(filepath.Join(tmpDir, "payload.txt"), []byte("ok"), 0o644); err != nil {
+			return PasswordExtractionResult{}, err
+		}
+		return PasswordExtractionResult{Volumes: []string{archivePath}}, nil
+	}
+
+	opts := cli.Options{
+		Dir:          root,
+		Depth:        0,
+		CKSFV:        false,
+		CleanHooks:   []string{"none"},
+		MaxDictBytes: 1 << 20,
+		PasswordFile: filepath.Join(root, "passwords.txt"),
+	}
+
+	stats, err := Run(opts, log.New(true, false))
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if stats.ArchivesFound != 1 {
+		t.Fatalf("ArchivesFound=%d, want 1", stats.ArchivesFound)
+	}
+	if stats.ArchivesExtracted != 1 {
+		t.Fatalf("ArchivesExtracted=%d, want 1", stats.ArchivesExtracted)
+	}
+	if stats.Failures != 0 {
+		t.Fatalf("Failures=%d, want 0", stats.Failures)
+	}
+
+	if _, err := os.Stat(filepath.Join(deepDir, "payload.txt")); err != nil {
+		t.Fatalf("expected payload moved into deep archive directory, stat err=%v", err)
+	}
+}
+
+func TestRunDryRunBypassesSkipIfExists(t *testing.T) {
+	root := t.TempDir()
+	archivePath := filepath.Join(root, "release.rar")
+	if err := os.WriteFile(archivePath, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write archive: %v", err)
+	}
+
+	skipChecks := 0
+
+	restore := stubRunDependencies()
+	defer restore()
+
+	scanCandidates = func(_ string, _ int) ([]finder.Candidate, error) {
+		return []finder.Candidate{{Path: archivePath, Stem: "release"}}, nil
+	}
+	validateRarSignature = func(path string) (bool, error) {
+		return true, nil
+	}
+	checkAlreadyExtracted = func(_ string, _ string, _ bool, _ ...rardecode.Option) (bool, error) {
+		skipChecks++
+		return true, nil
+	}
+	extractArchiveWithRetries = func(
+		_ string,
+		_ string,
+		_ bool,
+		_ int64,
+		_ bool,
+		_ string,
+	) (PasswordExtractionResult, error) {
+		t.Fatal("extractArchiveWithRetries should not be called in dry-run mode")
+		return PasswordExtractionResult{}, nil
+	}
+
+	opts := cli.Options{
+		Dir:          root,
+		Depth:        0,
+		DryRun:       true,
+		SkipIfExists: true,
+		CKSFV:        false,
+		CleanHooks:   []string{"none"},
+		MaxDictBytes: 1 << 20,
+		PasswordFile: filepath.Join(root, "passwords.txt"),
+	}
+
+	stats, err := Run(opts, log.New(true, false))
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if skipChecks != 0 {
+		t.Fatalf("skip checks=%d, want 0 in dry-run mode", skipChecks)
+	}
+	if stats.ArchivesExtracted != 1 {
+		t.Fatalf("ArchivesExtracted=%d, want 1", stats.ArchivesExtracted)
+	}
+	if stats.ArchivesSkipped != 0 {
+		t.Fatalf("ArchivesSkipped=%d, want 0", stats.ArchivesSkipped)
+	}
+}
+
+func TestRunSkipIfExistsChecksArchiveDirWhenOutputDirSet(t *testing.T) {
+	root := t.TempDir()
+	outputDir := t.TempDir()
+	archivePath := filepath.Join(root, "release.rar")
+	if err := os.WriteFile(archivePath, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write archive: %v", err)
+	}
+
+	restore := stubRunDependencies()
+	defer restore()
+
+	scanCandidates = func(_ string, _ int) ([]finder.Candidate, error) {
+		return []finder.Candidate{{Path: archivePath, Stem: "release"}}, nil
+	}
+	validateRarSignature = func(path string) (bool, error) {
+		return true, nil
+	}
+	checkAlreadyExtracted = func(_ string, destRoot string, _ bool, _ ...rardecode.Option) (bool, error) {
+		if got, want := destRoot, filepath.Dir(archivePath); got != want {
+			t.Fatalf("skip check destination=%q, want archive directory %q", got, want)
+		}
+		return true, nil
+	}
+	extractArchiveWithRetries = func(
+		_ string,
+		_ string,
+		_ bool,
+		_ int64,
+		_ bool,
+		_ string,
+	) (PasswordExtractionResult, error) {
+		t.Fatal("extractArchiveWithRetries should not run when skip-if-exists succeeds")
+		return PasswordExtractionResult{}, nil
+	}
+
+	opts := cli.Options{
+		Dir:          root,
+		OutputDir:    outputDir,
+		Depth:        0,
+		SkipIfExists: true,
+		CKSFV:        false,
+		CleanHooks:   []string{"none"},
+		MaxDictBytes: 1 << 20,
+		PasswordFile: filepath.Join(root, "passwords.txt"),
+	}
+
+	stats, err := Run(opts, log.New(true, false))
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if stats.ArchivesFound != 1 {
+		t.Fatalf("ArchivesFound=%d, want 1", stats.ArchivesFound)
+	}
+	if stats.ArchivesSkipped != 1 {
+		t.Fatalf("ArchivesSkipped=%d, want 1", stats.ArchivesSkipped)
+	}
+	if stats.ArchivesExtracted != 0 {
+		t.Fatalf("ArchivesExtracted=%d, want 0", stats.ArchivesExtracted)
 	}
 }
 
