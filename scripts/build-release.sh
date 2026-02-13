@@ -56,6 +56,9 @@ for target in "${targets[@]}"; do
 
   cp "${root_dir}/README.md" "${package_dir}/README.md"
   cp "${root_dir}/CHANGELOG.md" "${package_dir}/CHANGELOG.md"
+  if [[ -f "${root_dir}/LICENSE" ]]; then
+    cp "${root_dir}/LICENSE" "${package_dir}/LICENSE"
+  fi
 
   if [[ "${archive_ext}" == "zip" ]]; then
     (cd "${package_dir}" && zip -q -9 -r "${dist_dir}/${artifact_base}.zip" .)

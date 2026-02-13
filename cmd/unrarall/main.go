@@ -14,7 +14,7 @@ import (
 
 // version may be overridden at build time with:
 // -ldflags "-X main.version=<version>"
-var version = "1.0.0"
+var version = "1.0.1"
 
 var runApp = app.Run
 
