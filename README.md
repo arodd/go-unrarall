@@ -30,6 +30,32 @@ Notes:
 - `CGO_ENABLED=0` is recommended for a fully static, portable binary where possible.
 - `-mod=vendor` ensures builds use vendored dependencies.
 
+## Release (Maintainers)
+
+Build release artifacts for Linux, macOS, and Windows:
+
+```bash
+./scripts/build-release.sh 1.0.0
+```
+
+This creates:
+
+- `dist/v1.0.0/go-unrarall_1.0.0_linux_amd64.tar.gz`
+- `dist/v1.0.0/go-unrarall_1.0.0_linux_arm64.tar.gz`
+- `dist/v1.0.0/go-unrarall_1.0.0_darwin_amd64.tar.gz`
+- `dist/v1.0.0/go-unrarall_1.0.0_darwin_arm64.tar.gz`
+- `dist/v1.0.0/go-unrarall_1.0.0_windows_amd64.zip`
+- `dist/v1.0.0/SHA256SUMS`
+
+Publish the release with GitHub CLI:
+
+```bash
+gh auth login
+GH_REPO=arodd/go-unrarall ./scripts/publish-gh-release.sh 1.0.0
+```
+
+`GH_REPO` is only required when `origin` is not a GitHub remote.
+
 ## Run
 
 ```bash

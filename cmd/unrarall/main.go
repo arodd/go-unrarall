@@ -12,7 +12,9 @@ import (
 	"github.com/arodd/go-unrarall/internal/log"
 )
 
-const version = "0.1.0"
+// version may be overridden at build time with:
+// -ldflags "-X main.version=<version>"
+var version = "1.0.0"
 
 var runApp = app.Run
 

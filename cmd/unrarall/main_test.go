@@ -100,7 +100,7 @@ func TestRunWithIOVersionAppendsAcrossInvocations(t *testing.T) {
 		t.Fatalf("read append log file: %v", err)
 	}
 
-	want := "first 0.1.0\nsecond 0.1.0\n"
+	want := "first " + version + "\nsecond " + version + "\n"
 	if got := string(logBytes); got != want {
 		t.Fatalf("append log output=%q, want %q", got, want)
 	}
