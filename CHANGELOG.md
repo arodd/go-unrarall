@@ -1,3 +1,4 @@
+- 2026-02-13 [docs] Added architecture reference docs plus README behavior/exit/troubleshooting guidance and updated CLI help wording to match implemented behavior.
 - 2026-02-12 [docs] Added a public README with usage examples, cleanup hook docs, and vendored build instructions.
 - 2026-02-12 [feature] Added symlink hardening controls with `--allow-symlinks`, safe in-tree link validation, and symlink-aware move fallback support.
 - 2026-02-12 [feature] Added full app orchestration with SFV checks, skip-if-exists gating, temp extraction moves, run stats, and script-parity exit-code handling.
