@@ -28,6 +28,7 @@ func Usage(program string) string {
 	b.WriteString("      --full-path          Preserve full archive paths while extracting.\n")
 	b.WriteString("      --allow-symlinks     Allow symlink entries with in-tree target validation.\n")
 	b.WriteString("  -o, --output DIR         Output directory (must already exist).\n")
+	b.WriteString("      --log-file FILE      Append command output to FILE while still writing to console.\n")
 	b.WriteString("      --depth N            Recursive scan depth (default: 4).\n")
 	b.WriteString("      --skip-if-exists     Skip extraction when files already exist.\n")
 	b.WriteString("      --password-file FILE Password file path (default: ~/.unrar_passwords).\n")

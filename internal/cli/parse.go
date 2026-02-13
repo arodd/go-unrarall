@@ -16,6 +16,7 @@ import (
 type Options struct {
 	Dir           string
 	OutputDir     string
+	LogFile       string
 	Depth         int
 	SkipIfExists  bool
 	FullPath      bool
@@ -45,6 +46,7 @@ func ParseArgs(args []string) (Options, error) {
 	var (
 		disableCK bool
 		cleanSpec string
+		logFile   requiredPathFlag
 	)
 
 	fs.BoolVar(&opts.Verbose, "verbose", false, "")
@@ -64,6 +66,7 @@ func ParseArgs(args []string) (Options, error) {
 	fs.BoolVar(&opts.SkipIfExists, "skip-if-exists", false, "")
 	fs.StringVar(&opts.OutputDir, "output", "", "")
 	fs.StringVar(&opts.OutputDir, "o", "", "")
+	fs.Var(&logFile, "log-file", "")
 	fs.StringVar(&opts.PasswordFile, "password-file", opts.PasswordFile, "")
 	fs.StringVar(&cleanSpec, "clean", "none", "")
 	fs.Int64Var(&opts.MaxDictBytes, "max-dict", 1<<30, "")
@@ -91,6 +94,16 @@ func ParseArgs(args []string) (Options, error) {
 	}
 	opts.CleanHooks = hooks
 	opts.CKSFV = !disableCK
+
+	if logFile.set {
+		opts.LogFile = logFile.value
+	}
+	if opts.LogFile != "" {
+		opts.LogFile, err = filepath.Abs(opts.LogFile)
+		if err != nil {
+			return Options{}, fmt.Errorf("failed to resolve log file path: %w", err)
+		}
+	}
 
 	if opts.ShowHelp || opts.ShowVersion {
 		return opts, nil
@@ -199,4 +212,22 @@ func defaultPasswordFile() string {
 		return ".unrar_passwords"
 	}
 	return filepath.Join(home, ".unrar_passwords")
+}
+
+type requiredPathFlag struct {
+	set   bool
+	value string
+}
+
+func (f *requiredPathFlag) String() string {
+	return f.value
+}
+
+func (f *requiredPathFlag) Set(value string) error {
+	f.set = true
+	if strings.TrimSpace(value) == "" {
+		return fmt.Errorf("--log-file requires FILE")
+	}
+	f.value = value
+	return nil
 }

@@ -87,6 +87,12 @@ Try passwords from a file:
 ./unrarall --password-file ~/.unrar_passwords /data/downloads
 ```
 
+Append command output to a log file while still writing to the console:
+
+```bash
+./unrarall --log-file /var/log/unrarall.log /data/downloads
+```
+
 Run cleanup hooks after extraction:
 
 ```bash
@@ -107,6 +113,7 @@ Run cleanup hooks after extraction:
 - `--clean=SPEC`: `none|all|hook1,hook2`.
 - `--full-path`: preserve archive paths while extracting.
 - `-o, --output DIR`: output directory (must already exist).
+- `--log-file FILE`: append command output to `FILE` without changing normal stdout/stderr behavior.
 - `--depth N`: recursive scan depth (default `4`).
 - `--skip-if-exists`: skip extraction if all archive entries already exist by name.
 - `--password-file FILE`: password source file (default `~/.unrar_passwords`).
